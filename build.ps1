@@ -1,42 +1,52 @@
-# PyInstaller 构建脚本
-# 使用 UPX 压缩优化，单文件模式，无控制台窗口
+# PyInstaller Build Script - TOTP Password Manager
+# Using UPX compression optimization, single file mode, no console window
 
-# 设置参数
+# Configuration parameters
 $UPX_PATH = "F:\Program Files\upx-5.0.2-win64\upx.exe"
 $ICON_PATH = "icon.ico"
 $MAIN_FILE = "main.py"
 $OUTPUT_NAME = "totp_app"
+$PROJECT_PATH = $PWD
 
-# 检查 UPX 是否存在
+# Check if UPX exists
 if (-not (Test-Path $UPX_PATH)) {
-    Write-Host "错误: UPX 路径不存在: $UPX_PATH" -ForegroundColor Red
-    exit 1
+    Write-Host "Warning: UPX path does not exist: $UPX_PATH" -ForegroundColor Yellow
+    Write-Host "Will proceed without UPX compression" -ForegroundColor Yellow
+    $UPX_PATH = $null
 }
 
-# 检查图标文件是否存在
+# Check if icon file exists
 if (-not (Test-Path $ICON_PATH)) {
-    Write-Host "警告: 图标文件不存在: $ICON_PATH" -ForegroundColor Yellow
+    Write-Host "Warning: Icon file does not exist: $ICON_PATH" -ForegroundColor Yellow
     $ICON_PATH = ""
 }
 
-# 构建 PyInstaller 命令
+# Build PyInstaller command arguments
 $PyInstallerArgs = @(
-    "--onefile",                    # 单文件模式
-    "--noconsole",                  # 无控制台窗口
-    "--name=$OUTPUT_NAME",          # 输出文件名
-    "--clean",                      # 清理临时文件
-    "--upx-dir", (Split-Path $UPX_PATH -Parent),  # UPX 目录
-    "--distpath", "dist",           # 输出目录
-    "--workpath", "build",          # 工作目录
-    "--specpath", "."               # spec 文件目录
+    "--onefile",                    # Single file mode
+    "--noconsole",                  # No console window
+    "--name=$OUTPUT_NAME",          # Output filename
+    "--clean",                      # Clean temporary files
+    "--distpath", "dist",           # Output directory
+    "--workpath", "build",          # Working directory
+    "--specpath", ".",              # Spec file directory
+    "--add-data", "icon.ico;.",     # Include icon file
+    "--add-data", "data;data"       # Include data directory
 )
 
-# 添加图标参数（如果存在）
+# Add UPX parameters (if exists)
+if ($UPX_PATH -ne $null) {
+    $PyInstallerArgs += @(
+        "--upx-dir", (Split-Path $UPX_PATH -Parent)
+    )
+}
+
+# Add icon parameter (if exists)
 if ($ICON_PATH -ne "") {
     $PyInstallerArgs += "--icon=$ICON_PATH"
 }
 
-# 添加排除不必要的库
+# Exclude unnecessary libraries
 $PyInstallerArgs += @(
     "--exclude-module", "tkinter",
     "--exclude-module", "matplotlib",
@@ -45,45 +55,79 @@ $PyInstallerArgs += @(
     "--exclude-module", "pandas",
     "--exclude-module", "PIL",
     "--exclude-module", "PyQt5",
-    "--exclude-module", "PySide2",
     "--exclude-module", "wx"
 )
 
-# 添加隐藏导入（如果需要）
+# Add hidden imports (PySide6 and cryptography related)
 $PyInstallerArgs += @(
+    "--hidden-import", "PySide6",
+    "--hidden-import", "PySide6.QtCore",
+    "--hidden-import", "PySide6.QtGui", 
+    "--hidden-import", "PySide6.QtWidgets",
+    "--hidden-import", "cryptography",
+    "--hidden-import", "cryptography.hazmat",
     "--hidden-import", "cryptography.hazmat.backends",
     "--hidden-import", "cryptography.hazmat.primitives",
-    "--hidden-import", "cryptography.hazmat.primitives.kdf.pbkdf2"
+    "--hidden-import", "cryptography.hazmat.primitives.kdf.pbkdf2",
+    "--hidden-import", "pyotp"
 )
 
-# 添加主文件
+# Add main file
 $PyInstallerArgs += $MAIN_FILE
 
-Write-Host "start..." -ForegroundColor Green
-Write-Host "UPX path: $UPX_PATH" -ForegroundColor Cyan
-Write-Host "icon file: $ICON_PATH" -ForegroundColor Cyan
-Write-Host "exe name: $OUTPUT_NAME" -ForegroundColor Cyan
+Write-Host "Starting TOTP Password Manager build..." -ForegroundColor Green
+Write-Host "Project path: $PROJECT_PATH" -ForegroundColor Cyan
+if ($UPX_PATH -ne $null) {
+    Write-Host "UPX path: $UPX_PATH" -ForegroundColor Cyan
+} else {
+    Write-Host "UPX: Not used" -ForegroundColor Yellow
+}
+Write-Host "Icon file: $ICON_PATH" -ForegroundColor Cyan
+Write-Host "Output name: $OUTPUT_NAME" -ForegroundColor Cyan
 
-# 执行 PyInstaller
+# Clean previous build files
+if (Test-Path "build") {
+    Remove-Item -Recurse -Force "build" -ErrorAction SilentlyContinue
+    Write-Host "Cleaned build directory" -ForegroundColor Yellow
+}
+
+if (Test-Path "dist") {
+    Remove-Item -Recurse -Force "dist" -ErrorAction SilentlyContinue
+    Write-Host "Cleaned dist directory" -ForegroundColor Yellow
+}
+
+# Execute PyInstaller
 try {
+    Write-Host "Running PyInstaller..." -ForegroundColor Green
     pyinstaller @PyInstallerArgs
     
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "completed!" -ForegroundColor Green
-        Write-Host "file: dist\$OUTPUT_NAME.exe" -ForegroundColor Green
+        Write-Host "Build completed successfully!" -ForegroundColor Green
+        Write-Host "Output file: dist\$OUTPUT_NAME.exe" -ForegroundColor Green
         
-        # 显示文件大小
+        # Display file size
         $OutputFile = "dist\$OUTPUT_NAME.exe"
         if (Test-Path $OutputFile) {
             $FileSize = (Get-Item $OutputFile).Length / 1MB
-            Write-Host "文件大小: $([math]::Round($FileSize, 2)) MB" -ForegroundColor Yellow
+            Write-Host "File size: $([math]::Round($FileSize, 2)) MB" -ForegroundColor Yellow
+            
+            # Verify executable can run
+            Write-Host "Verifying executable..." -ForegroundColor Cyan
+            $Process = Start-Process -FilePath $OutputFile -PassThru -WindowStyle Hidden
+            Start-Sleep -Seconds 2
+            if (-not $Process.HasExited) {
+                $Process.Kill()
+                Write-Host "Executable verification passed" -ForegroundColor Green
+            } else {
+                Write-Host "Executable may have issues" -ForegroundColor Yellow
+            }
         }
     } else {
-        Write-Host "failed! $LASTEXITCODE" -ForegroundColor Red
+        Write-Host "Build failed! Exit code: $LASTEXITCODE" -ForegroundColor Red
         exit $LASTEXITCODE
     }
 }
 catch {
-    Write-Host "error!$_" -ForegroundColor Red
+    Write-Host "Error during build process: $_" -ForegroundColor Red
     exit 1
 }

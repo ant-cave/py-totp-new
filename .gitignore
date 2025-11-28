@@ -2,3 +2,6 @@
 __pycache__
 dist
 build
+
+*.spec
+totp_app.spec
