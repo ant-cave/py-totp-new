@@ -116,7 +116,7 @@ python main.py
 
 ## 许可证
 
-MIT License
+GPLv3 License
 
 ## 贡献
 
