@@ -1,5 +1,6 @@
-# TOTP密码管理器
+# TOTP密码管理器 
 
+![image](icon.ico)
 一个现代化的TOTP（基于时间的一次性密码）管理器应用，使用PySide6和pyotp库构建，具有密码加密功能和模块化设计。
 
 > **创作说明**：本项目由 Cline + DeepSeek 协作开发完成
