@@ -1,0 +1,14 @@
+{
+  "entries": [
+    {
+      "name": "dd",
+      "issuer": "dfds",
+      "encrypted_key": "Z0FBQUFBQnBLY0lYVUxTUThfdVpVaV9MT1JpZ2R4eXZSUWY0NTJKSS1ueHNhcGEyRHFKZFhrUEtiZ3dIQ3h6a2tibWlZVG13NHFDVGt5RzZCNnBlU1p2QVF2Zmhjbk5udnJxZTlHZ19GdDVyX1AwVmNfQVNzQVk9",
+      "salt": "DXEKBDBVdmtpgSzRFDEAFg==",
+      "icon": "",
+      "created_time": 1764344343.174548
+    }
+  ],
+  "version": "1.0.0",
+  "last_updated": 1764344343.174548
+}
