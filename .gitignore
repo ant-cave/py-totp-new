@@ -7,4 +7,6 @@ build
 totp_app.spec
 
 data
+
+.venv
 data/totp_data.json
