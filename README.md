@@ -97,6 +97,10 @@ python main.py
 - `PasswordDialog` - 密码弹窗
 - `AddEntryDialog` - 添加条目弹窗
 
+## 运行流程图
+
+![flowChart](./flowchart.svg)
+
 ## 许可证
 
 GNU General Public License v3.0。简单说就是你可以用、可以改、可以分发，但如果你在商业项目或公开产品里用了这个代码，**希望你能在合适的地方提一下原作者**，比如：
