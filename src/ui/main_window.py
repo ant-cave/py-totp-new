@@ -21,6 +21,42 @@ from src.ui.password_dialog import PasswordDialog
 from src.ui.add_entry_dialog import AddEntryDialog
 
 
+
+class ClickableLabel(QLabel):
+    def __init__(self, text=""):
+        super().__init__(text)
+        self.setAlignment(Qt.AlignCenter)
+    
+    def empty(self):
+        pass
+
+    def mousePressEvent(self, event):
+        # 触发点击事件
+        #print("QLabel 被点击了！")
+        # 可以在这里 emit 一个信号
+        if self.text() != "••••••":
+            self.clicked()
+
+    def clicked(self):
+        # 自定义的点击处理逻辑
+        self.setStyleSheet("""
+            QLabel {
+                color: rgb(46, 204, 46);
+                letter-spacing: 4px;
+                padding: 20px;
+                border-radius: 8px;
+            }
+        """)
+        QApplication.clipboard().setText(self.text())
+        QTimer.singleShot(300, lambda: self.setStyleSheet("""
+    QLabel {
+        color: #e74c3c;
+        letter-spacing: 4px;
+        padding: 20px;
+        border-radius: 8px;
+    }
+"""))
+
 class TOTPItemWidget(QWidget):
     """TOTP条目小部件"""
     
@@ -307,7 +343,7 @@ class MainWindow(QMainWindow):
         """)
         code_layout = QVBoxLayout(code_group)
         
-        self.code_display = QLabel("••••••")
+        self.code_display = ClickableLabel("••••••")
         self.code_display.setFont(QFont("Courier New", 32, QFont.Weight.Bold))
         self.code_display.setStyleSheet("""
             QLabel {
@@ -319,6 +355,8 @@ class MainWindow(QMainWindow):
                 qproperty-alignment: AlignCenter;
             }
         """)
+
+
         code_layout.addWidget(self.code_display)
         
         # 进度条
