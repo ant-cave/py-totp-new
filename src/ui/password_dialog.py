@@ -3,11 +3,13 @@
 处理主密码的设置和验证
 """
 
+import base64
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                             QLineEdit, QPushButton, QMessageBox, QFormLayout,
                             QGroupBox, QCheckBox)
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QIcon, QCloseEvent
+from PySide6.QtGui import QFont, QIcon, QCloseEvent, QPixmap
+from load_icon_data import ICON_BASE64
 
 
 class PasswordDialog(QDialog):
@@ -22,7 +24,13 @@ class PasswordDialog(QDialog):
         self.setWindowTitle("设置主密码" if initial_setup else "输入主密码")
         self.setModal(True)
         self.resize(400, 300)
-    
+        icon_data = base64.b64decode(ICON_BASE64)
+        self.setWindowFlag(Qt.Window) 
+        pixmap = QPixmap()
+        pixmap.loadFromData(icon_data)
+        icon = QIcon(pixmap)
+        self.setWindowIcon(icon)  # 关键：设置窗口图标
+
     def setup_ui(self):
         """设置UI"""
         layout = QVBoxLayout(self)

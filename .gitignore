@@ -8,5 +8,7 @@ totp_app.spec
 
 data
 
+.vscode
+
 .venv
 data/totp_data.json

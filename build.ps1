@@ -2,7 +2,7 @@
 # Using UPX compression optimization, single file mode, no console window
 
 # Configuration parameters
-$UPX_PATH = "F:\Program Files\upx-5.0.2-win64\upx.exe"
+$UPX_PATH = "C:\Program Files\upx-5.0.2-win64\upx.exe"
 $ICON_PATH = "icon.ico"
 $MAIN_FILE = "main.py"
 $OUTPUT_NAME = "totp_app"
@@ -64,6 +64,8 @@ $PyInstallerArgs += @(
     "--hidden-import", "PySide6.QtCore",
     "--hidden-import", "PySide6.QtGui", 
     "--hidden-import", "PySide6.QtWidgets",
+    "--hidden-import", "PySide6.QtUiTools",
+    "--hidden-import", "PySide6.QtNetwork",
     "--hidden-import", "cryptography",
     "--hidden-import", "cryptography.hazmat",
     "--hidden-import", "cryptography.hazmat.backends",
@@ -96,10 +98,18 @@ if (Test-Path "dist") {
     Write-Host "Cleaned dist directory" -ForegroundColor Yellow
 }
 
+# Activate virtual environment if exists
+$vEnvPath = Join-Path $PROJECT_PATH ".venv"
+$pythonExe = "python"
+if (Test-Path $vEnvPath) {
+    $pythonExe = Join-Path $vEnvPath "Scripts\python.exe"
+    Write-Host "Using virtual environment: $vEnvPath" -ForegroundColor Cyan
+}
+
 # Execute PyInstaller
 try {
     Write-Host "Running PyInstaller..." -ForegroundColor Green
-    pyinstaller @PyInstallerArgs
+    & $pythonExe -m PyInstaller @PyInstallerArgs
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "Build completed successfully!" -ForegroundColor Green

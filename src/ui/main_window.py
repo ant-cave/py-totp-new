@@ -12,8 +12,8 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                             QMessageBox, QDialog, QDialogButtonBox,
                             QFormLayout, QGroupBox, QSplitter, QFrame,
                             QTabWidget, QToolBar, QStatusBar, QApplication)
-from PySide6.QtCore import Qt, QTimer, Signal, QSize
-from PySide6.QtGui import QFont, QIcon, QPalette, QColor, QAction
+from PySide6.QtCore import Qt, QTimer, Signal, QSize, QEvent
+from PySide6.QtGui import QFont, QIcon, QPalette, QColor, QAction, QMouseEvent
 
 from src.core.totp_manager import TOTPManager, TOTPEntry
 from src.core.encryption import EncryptionManager
@@ -22,20 +22,21 @@ from src.ui.add_entry_dialog import AddEntryDialog
 
 
 
-class ClickableLabel(QLabel):
+class CodeDisplayLabel(QLabel):
     def __init__(self, text=""):
         super().__init__(text)
-        self.setAlignment(Qt.AlignCenter)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
     
     def empty(self):
         pass
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, ev: QMouseEvent):
         # 触发点击事件
         #print("QLabel 被点击了！")
         # 可以在这里 emit 一个信号
         if self.text() != "••••••":
             self.clicked()
+        super().mousePressEvent(ev)
 
     def clicked(self):
         # 自定义的点击处理逻辑
@@ -48,6 +49,7 @@ class ClickableLabel(QLabel):
             }
         """)
         QApplication.clipboard().setText(self.text())
+
         QTimer.singleShot(300, lambda: self.setStyleSheet("""
     QLabel {
         color: #e74c3c;
@@ -61,16 +63,118 @@ class TOTPItemWidget(QWidget):
     """TOTP条目小部件"""
     
     delete_requested = Signal(str)  # 删除请求信号
+    code_copied = Signal(str)  # 新增：代码复制信号
     
     def __init__(self, entry: TOTPEntry, parent=None):
         super().__init__(parent)
         self.entry = entry
+        self._is_hovered = False
+        self._is_selected = False  # 新增：选中状态
         self.setup_ui()
+        # 启用悬停事件跟踪
+        self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
+        self.setMouseTracking(True)
+        
+    def event(self, event: QEvent) -> bool:
+        # 处理悬停事件
+        if event.type() == QEvent.Type.HoverEnter:
+            self._is_hovered = True
+            self.update_hover_style()
+        elif event.type() == QEvent.Type.HoverLeave:
+            self._is_hovered = False
+            self.update_hover_style()
+        return super().event(event)
+    
+    def update_style(self):
+        """根据悬停和选中状态更新样式"""
+        if self._is_selected:
+            # 选中状态：蓝框，比hover状态更深一些的底色
+            self.frame.setStyleSheet("""
+                QFrame {
+                    background: #e8f4fc;
+                    border: 1px solid #3498db;
+                    border-radius: 8px;
+                    margin: 0px;
+                }
+                QFrame QLabel {
+                    border: none;
+                    background: transparent;
+                }
+                QFrame QProgressBar {
+                    border: none;
+                    background: #d4e6f1;
+                }
+            """)
+        elif self._is_hovered:
+            # 悬停状态：蓝框，浅灰底色
+            self.frame.setStyleSheet("""
+                QFrame {
+                    background: #f8f9fa;
+                    border: 1px solid #3498db;
+                    border-radius: 8px;
+                    margin: 0px;
+                }
+                QFrame QLabel {
+                    border: none;
+                    background: transparent;
+                }
+                QFrame QProgressBar {
+                    border: none;
+                    background: #ecf0f1;
+                }
+            """)
+        else:
+            # 普通状态
+            self.frame.setStyleSheet("""
+                QFrame {
+                    background: white;
+                    border: 1px solid transparent;
+                    border-radius: 8px;
+                    margin: 0px;
+                }
+                QFrame QLabel {
+                    border: none;
+                    background: transparent;
+                }
+                QFrame QProgressBar {
+                    border: none;
+                    background: #ecf0f1;
+                }
+            """)
+    
+    def update_hover_style(self):
+        """兼容旧方法，调用新的update_style"""
+        self.update_style()
+    
+    def set_selected(self, selected: bool):
+        """设置选中状态"""
+        if self._is_selected != selected:
+            self._is_selected = selected
+            self.update_style()
     
     def setup_ui(self):
-        """设置UI"""
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(10, 5, 10, 5)
+        # 主布局：只放一个 Frame
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # 创建真实 QFrame 框架
+        self.frame = QFrame()
+        self.frame.setFrameShape(QFrame.Shape.NoFrame)  # 我们用样式控制外观
+        self.frame.setStyleSheet("""
+            QFrame {
+                background: white;
+                border: 1px solid transparent;
+                border-radius: 8px;
+                margin: 0px;
+            }
+        """)
+        # 让frame也启用鼠标跟踪
+        self.frame.setMouseTracking(True)
+        frame_layout = QHBoxLayout(self.frame)
+        frame_layout.setContentsMargins(10, 5, 10, 5)
+        frame_layout.setSpacing(6)
+
+        # ===== 原来的控件全部加到 frame_layout 中 =====
         
         # 图标标签
         self.icon_label = QLabel()
@@ -85,36 +189,33 @@ class TOTPItemWidget(QWidget):
                 qproperty-alignment: AlignCenter;
             }
         """)
-        
-        # 设置图标文本（使用名称首字母）
         icon_text = self.entry.name[0].upper() if self.entry.name else "?"
         self.icon_label.setText(icon_text)
-        
+
         # 信息布局
         info_layout = QVBoxLayout()
         info_layout.setSpacing(2)
-        
-        # 名称标签
+
         self.name_label = QLabel(self.entry.name)
         self.name_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
         self.name_label.setStyleSheet("color: #2c3e50;")
-        
-        # 发行者标签
+
         if self.entry.issuer:
             self.issuer_label = QLabel(self.entry.issuer)
             self.issuer_label.setFont(QFont("Arial", 8))
             self.issuer_label.setStyleSheet("color: #7f8c8d;")
             info_layout.addWidget(self.issuer_label)
-        
+
         info_layout.addWidget(self.name_label)
-        
-        # TOTP代码标签
+
         self.code_label = QLabel("••••••")
         self.code_label.setFont(QFont("Courier New", 14, QFont.Weight.Bold))
         self.code_label.setStyleSheet("color: #e74c3c; letter-spacing: 2px;")
+        # 启用鼠标点击事件
+        self.code_label.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.code_label.mousePressEvent = self.on_code_label_clicked
         info_layout.addWidget(self.code_label)
-        
-        # 进度条
+
         self.progress_bar = QProgressBar()
         self.progress_bar.setFixedHeight(4)
         self.progress_bar.setTextVisible(False)
@@ -130,12 +231,9 @@ class TOTPItemWidget(QWidget):
                 border-radius: 2px;
             }
         """)
+
         info_layout.addWidget(self.progress_bar)
-        
-        layout.addWidget(self.icon_label)
-        layout.addLayout(info_layout)
-        layout.addStretch()
-        
+
         # 删除按钮
         self.delete_button = QPushButton("🗑️")
         self.delete_button.setFixedSize(30, 30)
@@ -156,28 +254,53 @@ class TOTPItemWidget(QWidget):
         """)
         self.delete_button.setToolTip("删除此条目")
         self.delete_button.clicked.connect(self.on_delete_clicked)
-        layout.addWidget(self.delete_button)
-        
-        # 设置最小尺寸
+        # 让按钮不干扰悬停检测
+        self.delete_button.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
+
+        # 组装 frame 内部
+        frame_layout.addWidget(self.icon_label)
+        frame_layout.addLayout(info_layout)
+        frame_layout.addStretch()
+        frame_layout.addWidget(self.delete_button)
+
+        # 把 frame 加入主布局
+        main_layout.addWidget(self.frame)
+
+        # 设置最小高度
         self.setMinimumHeight(80)
+    def on_code_label_clicked(self, ev: QMouseEvent):
+        """代码标签点击事件"""
+        code_text = self.code_label.text()
+        if code_text and code_text != "••••••":
+            # 变绿效果
+            original_style = self.code_label.styleSheet()
+            self.code_label.setStyleSheet("""
+                QLabel {
+                    color: rgb(46, 204, 46);
+                    letter-spacing: 2px;
+                }
+            """)
+            
+            # 复制到剪贴板
+            QApplication.clipboard().setText(code_text)
+            
+            # 发射代码复制信号
+            self.code_copied.emit(f"已复制: {code_text}")
+            
+            # 恢复原样
+            QTimer.singleShot(300, lambda: self.code_label.setStyleSheet("""
+                QLabel {
+                    color: #e74c3c;
+                    letter-spacing: 2px;
+                }
+            """))
         
-        # 设置样式
-        self.setStyleSheet("""
-            TOTPItemWidget {
-                background: white;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin: 2px;
-            }
-            TOTPItemWidget:hover {
-                background: #f8f9fa;
-                border-color: #3498db;
-            }
-        """)
+        super().mousePressEvent(ev) if hasattr(super(), 'mousePressEvent') else None
     
     def on_delete_clicked(self):
         """删除按钮点击事件"""
         self.delete_requested.emit(self.entry.name)
+
 
 
 class MainWindow(QMainWindow):
@@ -292,6 +415,8 @@ class MainWindow(QMainWindow):
         
         # 条目列表
         self.entry_list = QListWidget()
+        # 直接设置item间距，避免hover时互相遮盖
+        self.entry_list.setSpacing(4)
         self.entry_list.setStyleSheet("""
             QListWidget {
                 background: white;
@@ -302,6 +427,7 @@ class MainWindow(QMainWindow):
             QListWidget::item {
                 border: none;
                 padding: 0px;
+                margin: 0px;
             }
             QListWidget::item:selected {
                 background: transparent;
@@ -317,11 +443,12 @@ class MainWindow(QMainWindow):
         detail_widget = QWidget()
         detail_layout = QVBoxLayout(detail_widget)
         detail_layout.setContentsMargins(20, 20, 20, 20)
+        detail_layout.setSpacing(15)  # 增加控件之间的垂直间距
         
         # 详情标题
         self.detail_title = QLabel("选择条目查看详情")
         self.detail_title.setFont(QFont("Arial", 16, QFont.Weight.Bold))
-        self.detail_title.setStyleSheet("color: #2c3e50; margin-bottom: 20px;")
+        self.detail_title.setStyleSheet("color: #2c3e50; margin-bottom: 10px;")
         detail_layout.addWidget(self.detail_title)
         
         # 代码显示区域
@@ -343,7 +470,7 @@ class MainWindow(QMainWindow):
         """)
         code_layout = QVBoxLayout(code_group)
         
-        self.code_display = ClickableLabel("••••••")
+        self.code_display = CodeDisplayLabel("••••••")
         self.code_display.setFont(QFont("Courier New", 32, QFont.Weight.Bold))
         self.code_display.setStyleSheet("""
             QLabel {
@@ -420,7 +547,7 @@ class MainWindow(QMainWindow):
     
     def show_password_dialog(self, initial_setup=False):
         """显示密码对话框"""
-        dialog = PasswordDialog(self, initial_setup)
+        dialog = PasswordDialog(None,initial_setup)
         result = dialog.exec()
         
         # 如果对话框被拒绝（用户点击取消或关闭窗口），直接退出应用
@@ -465,6 +592,8 @@ class MainWindow(QMainWindow):
             item_widget = TOTPItemWidget(entry)
             # 连接删除信号
             item_widget.delete_requested.connect(self.on_delete_entry_requested)
+            # 连接代码复制信号
+            item_widget.code_copied.connect(self.on_code_copied)
             list_item = QListWidgetItem(self.entry_list)
             list_item.setSizeHint(item_widget.sizeHint())
             self.entry_list.addItem(list_item)
@@ -503,9 +632,17 @@ class MainWindow(QMainWindow):
     
     def on_entry_selected(self, current, previous):
         """条目选择事件"""
+        # 取消之前选中条目的选中状态
+        if previous:
+            previous_widget = self.entry_list.itemWidget(previous)
+            if previous_widget and isinstance(previous_widget, TOTPItemWidget):
+                previous_widget.set_selected(False)
+        
+        # 设置当前选中条目的选中状态
         if current:
             widget = self.entry_list.itemWidget(current)
             if widget and isinstance(widget, TOTPItemWidget):
+                widget.set_selected(True)
                 self.current_entry = widget.entry
                 self.show_entry_details(widget.entry)
     
@@ -575,6 +712,12 @@ class MainWindow(QMainWindow):
             
         except Exception:
             return False
+    
+    def on_code_copied(self, message: str):
+        """处理代码复制信号"""
+        self.status_label.setText(message)
+        # 3秒后恢复为"就绪"
+        QTimer.singleShot(3000, lambda: self.status_label.setText("就绪"))
     
     def on_delete_entry_requested(self, entry_name: str):
         """处理删除条目请求"""

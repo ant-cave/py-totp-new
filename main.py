@@ -6,10 +6,8 @@ TOTP密码管理器主程序
 
 import sys
 import base64
-from io import BytesIO
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QIcon, QPixmap
-from PySide6.QtCore import QTimer
 
 from src.ui.main_window import MainWindow
 from src.core.totp_manager import TOTPManager
