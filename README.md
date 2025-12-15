@@ -113,4 +113,13 @@ GNU General Public License v3.0。简单说就是你可以用、可以改、可�
 
 ## 贡献
 
+关于提交者：
+
+- [ant-cave](https://github.com/ant-cave/ant-cave)
+- [ANT-mmmmm](https://github.com/ANT-mmmmm/ANT-mmmmm)
+- [redirect-to](https://github.com/redirect-to/)
+
+均为同一人的不同账号详情见↑链接
+
+
 欢迎提 Issue 或 PR
