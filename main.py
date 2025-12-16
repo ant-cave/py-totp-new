@@ -6,6 +6,8 @@ TOTP密码管理器主程序
 
 import sys
 import base64
+from typing import NoReturn
+
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QIcon, QPixmap
 

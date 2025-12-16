@@ -6,19 +6,20 @@
 import sys
 import time
 from typing import Optional
-from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-                            QLabel, QPushButton, QLineEdit, QTextEdit, 
-                            QListWidget, QListWidgetItem, QProgressBar,
-                            QMessageBox, QDialog, QDialogButtonBox,
-                            QFormLayout, QGroupBox, QSplitter, QFrame,
-                            QTabWidget, QToolBar, QStatusBar, QApplication)
-from PySide6.QtCore import Qt, QTimer, Signal, QSize, QEvent
-from PySide6.QtGui import QFont, QIcon, QPalette, QColor, QAction, QMouseEvent
 
-from src.core.totp_manager import TOTPManager, TOTPEntry
+from PySide6.QtCore import QEvent, QSize, Qt, QTimer, Signal
+from PySide6.QtGui import QAction, QColor, QFont, QIcon, QMouseEvent, QPalette
+from PySide6.QtWidgets import (
+    QApplication, QDialog, QDialogButtonBox, QFormLayout, QFrame, QGroupBox,
+    QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow,
+    QMessageBox, QProgressBar, QPushButton, QSplitter, QStatusBar, QTabWidget,
+    QTextEdit, QToolBar, QVBoxLayout, QWidget
+)
+
 from src.core.encryption import EncryptionManager
-from src.ui.password_dialog import PasswordDialog
+from src.core.totp_manager import TOTPEntry, TOTPManager
 from src.ui.add_entry_dialog import AddEntryDialog
+from src.ui.password_dialog import PasswordDialog
 
 
 

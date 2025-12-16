@@ -4,11 +4,12 @@ TOTP管理器模块
 """
 
 import base64
-import time
 import json
 import os
+import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
 import pyotp
 from cryptography.fernet import Fernet
 

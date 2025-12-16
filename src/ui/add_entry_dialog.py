@@ -3,11 +3,22 @@
 处理TOTP条目的添加和编辑
 """
 
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
-                            QLineEdit, QPushButton, QMessageBox, QFormLayout,
-                            QGroupBox, QTextEdit, QCheckBox, QComboBox)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+)
 
 
 class AddEntryDialog(QDialog):

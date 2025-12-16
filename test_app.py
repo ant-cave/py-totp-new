@@ -3,8 +3,10 @@
 测试脚本 - 验证TOTP密码管理器应用的核心功能
 """
 
-import sys
 import os
+import sys
+from typing import NoReturn
+
 sys.path.append(os.path.dirname(__file__))
 
 from src.core.encryption import EncryptionManager

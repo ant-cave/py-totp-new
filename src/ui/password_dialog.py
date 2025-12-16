@@ -4,11 +4,22 @@
 """
 
 import base64
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
-                            QLineEdit, QPushButton, QMessageBox, QFormLayout,
-                            QGroupBox, QCheckBox)
+
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QIcon, QCloseEvent, QPixmap
+from PySide6.QtGui import QCloseEvent, QFont, QIcon, QPixmap
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QDialog,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+)
+
 from load_icon_data import ICON_BASE64
 
 
