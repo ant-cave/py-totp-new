@@ -57,15 +57,15 @@ class EncryptionManager:
         )
         return base64.urlsafe_b64encode(kdf.derive(password.encode()))
     
-    def initialize_encryption(self, password: str) -> bool:
-        """使用密码初始化加密系统"""
+    def initialize_encryption(self, password: str) -> Optional[bytes]:
+        """使用密码初始化加密系统，返回盐值（成功时）或None（失败时）"""
         try:
             self._salt = self._generate_salt()
             key = self._derive_key(password, self._salt)
             self._fernet = Fernet(key)
-            return True
+            return self._salt
         except Exception:
-            return False
+            return None
     
     def unlock(self, password: str, salt: bytes) -> bool:
         """使用密码解锁加密系统"""
@@ -138,9 +138,8 @@ class EncryptionManager:
             try:
                 with open(data_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    # 如果数据文件存在且包含版本信息，说明已经初始化过
-                    # 即使条目为空，只要文件存在就认为已经设置过密码
-                    return "version" in data
+                    # 如果文件存在且包含版本信息或initialized标志，说明已经初始化过
+                    return "version" in data or "initialized" in data
             except (json.JSONDecodeError, IOError):
                 return False
         return False

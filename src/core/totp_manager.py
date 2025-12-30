@@ -92,11 +92,15 @@ class TOTPManager:
     
     def initialize_with_password(self, password: str) -> bool:
         """使用密码初始化加密系统"""
-        success = self.encryption.initialize_encryption(password)
-        if success:
+        salt = self.encryption.initialize_encryption(password)
+        if salt:
             self._current_password = password
-            self._load_data()
-        return success
+            
+            # 创建基础数据文件，即使还没有条目
+            self._create_initial_data_file(salt)
+            self._load_data()  # 加载数据（可能是空的）
+            return True
+        return False
     
     def unlock_with_password(self, password: str, salt: bytes) -> bool:
         """使用密码解锁加密系统"""
@@ -110,13 +114,33 @@ class TOTPManager:
         """检查是否已经设置过密码（通过检查是否存在加密数据）"""
         return self.encryption.has_encrypted_data()
     
+    def _create_initial_data_file(self, salt: bytes):
+        """创建初始数据文件"""
+        try:
+            data = {
+                "version": "1.0.0",
+                "initialized": True,
+                "initial_salt": base64.b64encode(salt).decode(),
+                "initialized_time": time.time(),
+                "entries": []  # 空条目列表
+            }
+            
+            with open(self.data_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+        except IOError:
+            pass
+    
     def _load_data(self):
         """加载TOTP数据"""
         if self.data_file.exists():
             try:
                 with open(self.data_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    self._entries = [TOTPEntry.from_dict(entry_data) for entry_data in data.get("entries", [])]
+                    # 兼容旧版本数据文件，可能没有entries字段
+                    if "entries" in data:
+                        self._entries = [TOTPEntry.from_dict(entry_data) for entry_data in data.get("entries", [])]
+                    else:
+                        self._entries = []
             except (json.JSONDecodeError, IOError):
                 self._entries = []
         else:
@@ -125,11 +149,29 @@ class TOTPManager:
     def _save_data(self) -> bool:
         """保存TOTP数据"""
         try:
+            # 读取现有数据以保留初始化信息
+            existing_data = {}
+            if self.data_file.exists():
+                try:
+                    with open(self.data_file, 'r', encoding='utf-8') as f:
+                        existing_data = json.load(f)
+                except (json.JSONDecodeError, IOError):
+                    existing_data = {}
+            
+            # 准备要保存的数据
             data = {
                 "entries": [entry.to_dict() for entry in self._entries],
                 "version": "1.0.0",
                 "last_updated": time.time()
             }
+            
+            # 保留初始化信息（如果存在）
+            if "initialized" in existing_data:
+                data["initialized"] = existing_data["initialized"]
+            if "initial_salt" in existing_data:
+                data["initial_salt"] = existing_data["initial_salt"]
+            if "initialized_time" in existing_data:
+                data["initialized_time"] = existing_data["initialized_time"]
             
             with open(self.data_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
