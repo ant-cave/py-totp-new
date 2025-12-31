@@ -700,33 +700,50 @@ class MainWindow(QMainWindow):
     def verify_and_unlock(self, password: str) -> bool:
         """验证密码并解锁系统"""
         try:
-            # 首先加载数据来获取条目
-            self.totp_manager._load_data()
-            
-            # 获取第一个条目的盐值和加密密钥来测试密码
-            entries = self.totp_manager.get_all_entries()
-            if not entries:
-                return False
-            
-            # 使用第一个条目的盐值和加密密钥来验证密码
-            first_entry = entries[0]
-            if not first_entry.salt or not first_entry.encrypted_key:
-                return False
-            
-            # 使用加密管理器的验证方法（使用实际的加密数据）
-            is_valid = self.totp_manager.encryption.validate_password_with_encrypted_data(
-                password, 
-                first_entry.salt,
-                first_entry.encrypted_key
-            )
-            
-            # 如果验证成功，设置TOTP管理器的当前密码并解锁加密系统
-            if is_valid:
+            # 首先尝试使用独立密码验证
+            if self.totp_manager.encryption.verify_password(password):
+                # 如果独立密码验证成功，设置当前密码
                 self.totp_manager._current_password = password
-                # 解锁加密系统，使其能够加密新条目
-                self.totp_manager.encryption.unlock(password, first_entry.salt)
                 
-            return is_valid
+                # 加载数据
+                self.totp_manager._load_data()
+                
+                # 如果存在TOTP条目，使用第一个条目的盐值解锁加密系统
+                entries = self.totp_manager.get_all_entries()
+                if entries:
+                    first_entry = entries[0]
+                    if first_entry.salt:
+                        self.totp_manager.encryption.unlock(password, first_entry.salt)
+                else:
+                    # 如果没有TOTP条目，使用独立密码验证的盐值
+                    password_salt = self.totp_manager.encryption.get_password_salt()
+                    if password_salt:
+                        self.totp_manager.encryption.unlock(password, password_salt)
+                
+                return True
+            
+            # 如果独立密码验证失败，尝试传统的验证方式（向后兼容）
+            self.totp_manager._load_data()
+            entries = self.totp_manager.get_all_entries()
+            
+            if entries:
+                # 使用第一个条目的盐值和加密密钥来验证密码
+                first_entry = entries[0]
+                if first_entry.salt and first_entry.encrypted_key:
+                    # 使用加密管理器的验证方法（使用实际的加密数据）
+                    is_valid = self.totp_manager.encryption.validate_password_with_encrypted_data(
+                        password, 
+                        first_entry.salt,
+                        first_entry.encrypted_key
+                    )
+                    
+                    # 如果验证成功，设置TOTP管理器的当前密码并解锁加密系统
+                    if is_valid:
+                        self.totp_manager._current_password = password
+                        self.totp_manager.encryption.unlock(password, first_entry.salt)
+                        return True
+            
+            return False
             
         except Exception:
             return False

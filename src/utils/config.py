@@ -69,6 +69,12 @@ class ConfigManager:
             "encryption": {
                 "algorithm": "AES",
                 "key_derivation_iterations": 100000
+            },
+            "password": {
+                "is_set": False,      # 标记密码是否已设置
+                "salt": None,         # 密码验证盐值（Base64编码）
+                "iterations": 100000, # 密码验证迭代次数
+                "test_data": None     # 密码验证测试数据（Base64编码）
             }
         }
     

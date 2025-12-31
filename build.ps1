@@ -23,6 +23,7 @@ if (-not (Test-Path $ICON_PATH)) {
 
 # Build PyInstaller command arguments
 $PyInstallerArgs = @(
+    "--optimize","1"
     "--onefile",                    # Single file mode
     "--noconsole",                  # No console window
     "--name=$OUTPUT_NAME",          # Output filename

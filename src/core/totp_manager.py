@@ -92,7 +92,8 @@ class TOTPManager:
     
     def initialize_with_password(self, password: str) -> bool:
         """使用密码初始化加密系统"""
-        success = self.encryption.initialize_encryption(password)
+        # 使用新的独立密码存储方法
+        success = self.encryption.set_password(password)
         if success:
             self._current_password = password
             self._load_data()

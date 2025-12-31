@@ -132,6 +132,11 @@ class EncryptionManager:
     
     def has_encrypted_data(self) -> bool:
         """检查是否存在已加密的数据（用于判断是否已经设置过密码）"""
+        # 首先检查是否在配置中设置了独立密码
+        if self._has_password_set():
+            return True
+        
+        # 为了向后兼容，检查TOTP数据文件
         from pathlib import Path
         data_file = Path("data") / "totp_data.json"
         if data_file.exists():
@@ -144,6 +149,96 @@ class EncryptionManager:
             except (json.JSONDecodeError, IOError):
                 return False
         return False
+    
+    def _has_password_set(self) -> bool:
+        """检查是否已设置独立密码（通过配置）"""
+        return self.config.get("password.is_set", False)
+    
+    def set_password(self, password: str) -> bool:
+        """设置独立的主密码（不依赖TOTP数据）"""
+        try:
+            # 生成新的盐值用于密码验证
+            password_salt = self._generate_salt()
+            iterations = self.config.get("password.iterations", 100000)
+            
+            # 使用PBKDF2派生密码哈希
+            kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=password_salt,
+                iterations=iterations,
+                backend=default_backend()
+            )
+            
+            # 派生密码哈希并创建Fernet密钥
+            password_hash = kdf.derive(password.encode())
+            fernet_key = base64.urlsafe_b64encode(password_hash)
+            test_fernet = Fernet(fernet_key)
+            
+            # 创建测试加密数据并存储
+            test_data = "totp_password_validation_2024"
+            encrypted_test_data = test_fernet.encrypt(test_data.encode())
+            
+            # 保存密码设置信息到配置
+            self.config.set("password.is_set", True)
+            self.config.set("password.salt", base64.b64encode(password_salt).decode())
+            self.config.set("password.iterations", iterations)
+            self.config.set("password.test_data", base64.b64encode(encrypted_test_data).decode())
+            
+            # 同时初始化加密系统，以便后续使用
+            success = self.initialize_encryption(password)
+            
+            return success
+        except Exception:
+            return False
+    
+    def verify_password(self, password: str) -> bool:
+        """验证独立存储的密码"""
+        try:
+            # 检查是否已设置密码
+            if not self._has_password_set():
+                return False
+            
+            # 从配置中获取盐值、迭代次数和测试数据
+            salt_b64 = self.config.get("password.salt")
+            iterations = self.config.get("password.iterations", 100000)
+            test_data_b64 = self.config.get("password.test_data")
+            
+            if not salt_b64 or not test_data_b64:
+                return False
+            
+            salt = base64.b64decode(salt_b64)
+            encrypted_test_data = base64.b64decode(test_data_b64)
+            
+            # 使用相同的参数派生密码哈希
+            kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=iterations,
+                backend=default_backend()
+            )
+            
+            # 派生密码哈希并创建Fernet密钥
+            password_hash = kdf.derive(password.encode())
+            fernet_key = base64.urlsafe_b64encode(password_hash)
+            
+            # 尝试解密测试数据
+            test_fernet = Fernet(fernet_key)
+            decrypted = test_fernet.decrypt(encrypted_test_data).decode()
+            
+            # 验证解密后的数据是否与预期匹配
+            return decrypted == "totp_password_validation_2024"
+        except Exception:
+            # 如果解密失败（密码错误），返回False
+            return False
+    
+    def get_password_salt(self) -> Optional[bytes]:
+        """获取密码验证盐值"""
+        salt_b64 = self.config.get("password.salt")
+        if salt_b64:
+            return base64.b64decode(salt_b64)
+        return None
     
     def clear(self):
         """清除加密状态"""
