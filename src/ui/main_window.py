@@ -262,7 +262,8 @@ QPushButton {
     border: 2px solid #e74c3c;
     border-radius: 15px;
     color: #e74c3c;
-    font-size: 12px;
+    font-size: 13px;
+    qproperty-alignment: AlignCenter;
 }
 QPushButton:hover {
     background: #ffcdd2;  /* 浅粉红（Material风格） */
@@ -278,7 +279,7 @@ QPushButton:pressed {
         self.delete_button.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
 
         # info按钮（查看密钥）
-        self.info_button = QPushButton("ℹ️")
+        self.info_button = QPushButton("i")
         self.info_button.setFixedSize(30, 30)
         self.info_button.setStyleSheet("""
 QPushButton {
@@ -286,7 +287,9 @@ QPushButton {
     border: 2px solid #3498db;
     border-radius: 15px;
     color: #3498db;
-    font-size: 12px;
+    font-size: 14px;
+    font-weight: bold;
+    qproperty-alignment: AlignCenter;
 }
 QPushButton:hover {
     background: #d6eaf8;  /* 浅蓝色 */
@@ -410,54 +413,145 @@ QPushButton:pressed {
     
     def show_key_dialog(self, secret_key: str):
         """显示密钥对话框"""
-        # 创建一个简单的对话框显示密钥
+        # 创建一个现代化对话框显示密钥
         dialog = QDialog(self)
         dialog.setWindowTitle(f"明文密钥 - {self.entry.name}")
-        dialog.setMinimumWidth(400)
-        
-        layout = QVBoxLayout(dialog)
-        
-        # 标题
-        title_label = QLabel(f"<b>{self.entry.name}</b> 的明文密钥")
-        if self.entry.issuer:
-            title_label.setText(f"<b>{self.entry.name}</b> ({self.entry.issuer}) 的明文密钥")
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(title_label)
-        
-        # 密钥显示区域
-        key_frame = QFrame()
-        key_frame.setFrameShape(QFrame.Shape.StyledPanel)
-        key_frame.setStyleSheet("""
-            QFrame {
+        dialog.setMinimumWidth(450)
+        dialog.setStyleSheet("""
+            QDialog {
                 background: #f8f9fa;
-                border: 2px solid #3498db;
-                border-radius: 8px;
-                padding: 15px;
             }
         """)
         
-        key_layout = QVBoxLayout(key_frame)
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(15)
+        layout.setContentsMargins(25, 25, 25, 25)
+        
+        # 标题区域
+        title_frame = QFrame()
+        title_frame.setStyleSheet("""
+            QFrame {
+                background: #3498db;
+                border-radius: 8px;
+                padding: 10px;
+            }
+        """)
+        title_layout = QVBoxLayout(title_frame)
+        
+        title_label = QLabel(f"<font color='white' size='5'><b>{self.entry.name}</b></font>")
+        if self.entry.issuer:
+            title_label.setText(f"<font color='white' size='5'><b>{self.entry.name}</b></font><br>"
+                              f"<font color='#d6eaf8' size='3'>{self.entry.issuer}</font>")
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_layout.addWidget(title_label)
+        
+        layout.addWidget(title_frame)
+        
+        # 说明标签
+        info_label = QLabel("🔐 以下为解密的TOTP密钥")
+        info_label.setFont(QFont("Arial", 10))
+        info_label.setStyleSheet("color: #2c3e50; margin-top: 5px;")
+        info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(info_label)
+        
+        # 密钥显示区域
+        key_group = QGroupBox("TOTP密钥")
+        key_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                border: 2px solid #3498db;
+                border-radius: 8px;
+                margin-top: 10px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+                color: #3498db;
+            }
+        """)
+        key_layout = QVBoxLayout(key_group)
         
         key_label = QLabel(secret_key)
-        key_label.setFont(QFont("Courier New", 12, QFont.Weight.Bold))
-        key_label.setStyleSheet("color: #2c3e50; letter-spacing: 1px;")
+        key_label.setFont(QFont("Courier New", 14, QFont.Weight.Bold))
+        key_label.setStyleSheet("""
+            QLabel {
+                color: #2c3e50;
+                letter-spacing: 1px;
+                background: #f1f8ff;
+                border: 1px solid #d6eaf8;
+                border-radius: 6px;
+                padding: 15px;
+                margin: 5px;
+            }
+        """)
         key_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         key_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         key_label.setWordWrap(True)
         
         key_layout.addWidget(key_label)
-        layout.addWidget(key_frame)
+        layout.addWidget(key_group)
         
-        # 说明文本
-        info_label = QLabel("注意：请妥善保管此密钥，不要与他人分享")
-        info_label.setStyleSheet("color: #7f8c8d; font-size: 11px;")
-        info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(info_label)
+        # 警告说明
+        warning_frame = QFrame()
+        warning_frame.setStyleSheet("""
+            QFrame {
+                background: #fff3cd;
+                border: 1px solid #ffeaa7;
+                border-radius: 6px;
+                padding: 10px;
+            }
+        """)
+        warning_layout = QVBoxLayout(warning_frame)
         
-        # 按钮
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
-        button_box.accepted.connect(dialog.accept)
-        layout.addWidget(button_box)
+        warning_label = QLabel("⚠️ 安全警告：请妥善保管此密钥，不要与他人分享！")
+        warning_label.setFont(QFont("Arial", 9))
+        warning_label.setStyleSheet("color: #856404;")
+        warning_label.setWordWrap(True)
+        warning_layout.addWidget(warning_label)
+        
+        layout.addWidget(warning_frame)
+        
+        # 按钮区域
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        copy_button = QPushButton("📋 复制密钥")
+        copy_button.setStyleSheet("""
+            QPushButton {
+                background: #3498db;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #2980b9;
+            }
+        """)
+        copy_button.clicked.connect(lambda: QApplication.clipboard().setText(secret_key))
+        button_layout.addWidget(copy_button)
+        
+        ok_button = QPushButton("确定")
+        ok_button.setStyleSheet("""
+            QPushButton {
+                background: #2ecc71;
+                color: white;
+                border: none;
+                padding: 8px 24px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #27ae60;
+            }
+        """)
+        ok_button.clicked.connect(dialog.accept)
+        button_layout.addWidget(ok_button)
+        
+        layout.addLayout(button_layout)
         
         dialog.exec()
     
@@ -928,4 +1022,195 @@ class MainWindow(QMainWindow):
     
     def show_settings(self):
         """显示设置对话框"""
-        QMessageBox.information(self, "设置", "设置功能开发中...")
+        # 创建设置对话框
+        dialog = QDialog(self)
+        dialog.setWindowTitle("设置")
+        dialog.setMinimumWidth(500)
+        dialog.setStyleSheet("""
+            QDialog {
+                background: #f8f9fa;
+            }
+        """)
+        
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(15)
+        layout.setContentsMargins(25, 25, 25, 25)
+        
+        # 标题区域
+        title_frame = QFrame()
+        title_frame.setStyleSheet("""
+            QFrame {
+                background: #3498db;
+                border-radius: 8px;
+                padding: 10px;
+            }
+        """)
+        title_layout = QVBoxLayout(title_frame)
+        
+        title_label = QLabel("<font color='white' size='5'><b>⚙️ 设置</b></font>")
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_layout.addWidget(title_label)
+        
+        layout.addWidget(title_frame)
+        
+        # 应用信息组
+        info_group = QGroupBox("应用信息")
+        info_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                border: 2px solid #3498db;
+                border-radius: 8px;
+                margin-top: 10px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+                color: #3498db;
+            }
+        """)
+        info_layout = QVBoxLayout(info_group)
+        
+        # 应用名称
+        app_name = QLabel("<b>TOTP密码管理器</b>")
+        app_name.setFont(QFont("Arial", 12))
+        app_name.setStyleSheet("color: #2c3e50; margin-bottom: 5px;")
+        app_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        info_layout.addWidget(app_name)
+        
+        # 版本信息（这里可以硬编码，或者从文件中读取）
+        version_label = QLabel("版本: 1.1.1")
+        version_label.setFont(QFont("Arial", 10))
+        version_label.setStyleSheet("color: #7f8c8d;")
+        version_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        info_layout.addWidget(version_label)
+        
+        # 开发者信息
+        dev_label = QLabel("开发者: ANTmmmmm <ANTmmmmm@outlook.com>")
+        dev_label.setFont(QFont("Arial", 10))
+        dev_label.setStyleSheet("color: #7f8c8d; margin-top: 10px;")
+        dev_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        info_layout.addWidget(dev_label)
+        
+        layout.addWidget(info_group)
+        
+        # 版权信息组
+        license_group = QGroupBox("版权信息")
+        license_group.setStyleSheet(info_group.styleSheet())
+        license_layout = QVBoxLayout(license_group)
+        
+        license_text = QLabel(
+            "本程序是自由软件：您可以再分发之和/或依照由自由软件基金会发布的 GNU 通用公共许可证的条款修改之，无论是版本 3 许可证，还是（按您的选择）任何以后版都可以。\n\n"
+            "发布本程序是希望它能有用，但是并无保障；甚至连可销售和符合某个特定的目的都不保证。请参看 GNU 通用公共许可证，了解详情。\n\n"
+            "您应该已经收到了一份 GNU 通用公共许可证的副本。如果没有，请参阅 <https://www.gnu.org/licenses/>。"
+        )
+        license_text.setFont(QFont("Arial", 9))
+        license_text.setStyleSheet("color: #2c3e50; background: #f8f9fa; padding: 10px; border-radius: 4px;")
+        license_text.setWordWrap(True)
+        license_text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        license_layout.addWidget(license_text)
+        
+        layout.addWidget(license_group)
+        
+        # 项目链接组
+        links_group = QGroupBox("项目链接")
+        links_group.setStyleSheet(info_group.styleSheet())
+        links_layout = QVBoxLayout(links_group)
+        
+        # GitHub链接
+        github_frame = QFrame()
+        github_frame.setStyleSheet("""
+            QFrame {
+                background: #f1f8ff;
+                border: 1px solid #d1d5da;
+                border-radius: 6px;
+                padding: 10px;
+                margin: 5px;
+            }
+        """)
+        github_layout = QHBoxLayout(github_frame)
+        
+        github_icon = QLabel("🐙")
+        github_icon.setFont(QFont("Arial", 14))
+        github_layout.addWidget(github_icon)
+        
+        github_text = QLabel("GitHub 仓库:")
+        github_text.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+        github_text.setStyleSheet("color: #2c3e50;")
+        github_layout.addWidget(github_text)
+        
+        github_link = QLabel("<a href='https://github.com/ant-cave/py-totp-new' style='color: #0366d6;'>https://github.com/ant-cave/py-totp-new</a>")
+        github_link.setFont(QFont("Arial", 9))
+        github_link.setOpenExternalLinks(True)
+        github_link.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+        github_layout.addWidget(github_link)
+        github_layout.addStretch()
+        
+        links_layout.addWidget(github_frame)
+        
+        # 问题反馈
+        issue_frame = QFrame()
+        issue_frame.setStyleSheet(github_frame.styleSheet())
+        issue_layout = QHBoxLayout(issue_frame)
+        
+        issue_icon = QLabel("🐛")
+        issue_icon.setFont(QFont("Arial", 14))
+        issue_layout.addWidget(issue_icon)
+        
+        issue_text = QLabel("问题反馈:")
+        issue_text.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+        issue_text.setStyleSheet("color: #2c3e50;")
+        issue_layout.addWidget(issue_text)
+        
+        issue_link = QLabel("<a href='https://github.com/ant-cave/py-totp-new/issues' style='color: #0366d6;'>提交 Issue 或功能请求</a>")
+        issue_link.setFont(QFont("Arial", 9))
+        issue_link.setOpenExternalLinks(True)
+        issue_link.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+        issue_layout.addWidget(issue_link)
+        issue_layout.addStretch()
+        
+        links_layout.addWidget(issue_frame)
+        
+        layout.addWidget(links_group)
+        
+        # 统计信息（如果有的话）
+        stats_group = QGroupBox("统计信息")
+        stats_group.setStyleSheet(info_group.styleSheet())
+        stats_layout = QVBoxLayout(stats_group)
+        
+        # 获取条目数量
+        entry_count = len(self.totp_manager.get_all_entries())
+        stats_label = QLabel(f"当前存储的TOTP条目数量: <b>{entry_count}</b>")
+        stats_label.setFont(QFont("Arial", 10))
+        stats_label.setStyleSheet("color: #2c3e50;")
+        stats_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        stats_layout.addWidget(stats_label)
+        
+        layout.addWidget(stats_group)
+        
+        # 按钮区域
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        # 关闭按钮
+        close_button = QPushButton("关闭")
+        close_button.setStyleSheet("""
+            QPushButton {
+                background: #95a5a6;
+                color: white;
+                border: none;
+                padding: 8px 24px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #7f8c8d;
+            }
+        """)
+        close_button.clicked.connect(dialog.accept)
+        button_layout.addWidget(close_button)
+        
+        layout.addLayout(button_layout)
+        
+        dialog.exec()

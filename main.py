@@ -40,7 +40,7 @@ class TOTPApp:
     def __init__(self):
         self.app = QApplication(sys.argv)
         self.app.setApplicationName("TOTP密码管理器")
-        self.app.setApplicationVersion("1.0.0")
+        self.app.setApplicationVersion("1.1.1")
         
         # 设置应用图标（使用Base64硬编码）
         try:
