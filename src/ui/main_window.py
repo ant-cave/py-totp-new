@@ -27,7 +27,7 @@ from typing import Optional
 from PySide6.QtCore import QEvent, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QColor, QFont, QIcon, QMouseEvent, QPalette
 from PySide6.QtWidgets import (
-    QApplication, QDialog, QDialogButtonBox, QFormLayout, QFrame, QGroupBox,
+    QApplication, QCheckBox, QDialog, QDialogButtonBox, QFormLayout, QFrame, QGroupBox,
     QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow,
     QMessageBox, QProgressBar, QPushButton, QSplitter, QStatusBar, QTabWidget,
     QTextEdit, QToolBar, QVBoxLayout, QWidget
@@ -356,27 +356,108 @@ QPushButton:pressed {
             QMessageBox.warning(self, "错误", "应用未解锁")
             return
         
-        # 创建密码输入对话框
-        from PySide6.QtWidgets import QInputDialog
+        # 创建自定义密码输入对话框，保持样式一致
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout
+        from PySide6.QtCore import Qt
         
-        password, ok = QInputDialog.getText(
-            self,
-            "验证密码",
-            "请输入主密码以查看明文密钥:",
-            QLineEdit.EchoMode.Password,
-            ""
-        )
+        dialog = QDialog(self)
+        dialog.setWindowTitle("验证密码")
+        dialog.setModal(True)
+        dialog.setFixedSize(400, 200)
+        # 设置窗口始终置顶
+        dialog.setWindowFlags(dialog.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         
-        if not ok or not password:
-            return  # 用户取消
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(15)
+        layout.setContentsMargins(25, 25, 25, 25)
         
-        # 验证密码（使用主窗口的当前密码进行比对）
-        if password != self.main_window.current_password:
-            QMessageBox.warning(self, "密码错误", "密码不正确")
-            return
+        # 标题
+        title_label = QLabel("请输入主密码以查看明文密钥")
+        title_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        title_label.setStyleSheet("color: #2c3e50;")
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title_label)
         
-        # 密码验证成功，解密并显示密钥
-        self.show_secret_key()
+        # 密码输入框
+        self.verify_password_edit = QLineEdit()
+        self.verify_password_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        self.verify_password_edit.setPlaceholderText("请输入主密码")
+        self.verify_password_edit.returnPressed.connect(dialog.accept)
+        self.verify_password_edit.setStyleSheet("""
+            QLineEdit {
+                padding: 10px;
+                border: 2px solid #bdc3c7;
+                border-radius: 6px;
+                font-size: 14px;
+            }
+            QLineEdit:focus {
+                border-color: #3498db;
+            }
+        """)
+        layout.addWidget(self.verify_password_edit)
+        
+        # 显示密码复选框
+        verify_show_password = QCheckBox("显示密码")
+        verify_show_password.toggled.connect(lambda checked: 
+            self.verify_password_edit.setEchoMode(QLineEdit.EchoMode.Normal if checked else QLineEdit.EchoMode.Password))
+        layout.addWidget(verify_show_password)
+        
+        # 按钮布局
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        cancel_button = QPushButton("取消")
+        cancel_button.clicked.connect(dialog.reject)
+        cancel_button.setStyleSheet("""
+            QPushButton {
+                background: #95a5a6;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #7f8c8d;
+            }
+        """)
+        button_layout.addWidget(cancel_button)
+        
+        ok_button = QPushButton("验证")
+        ok_button.clicked.connect(dialog.accept)
+        ok_button.setStyleSheet("""
+            QPushButton {
+                background: #3498db;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #2980b9;
+            }
+        """)
+        button_layout.addWidget(ok_button)
+        
+        layout.addLayout(button_layout)
+        
+        result = dialog.exec()
+        
+        if result == QDialog.DialogCode.Accepted:
+            password = self.verify_password_edit.text()
+            
+            if not password:
+                QMessageBox.warning(self, "警告", "请输入密码")
+                return
+            
+            # 验证密码（使用主窗口的当前密码进行比对）
+            if password != self.main_window.current_password:
+                QMessageBox.warning(self, "密码错误", "密码不正确")
+                return
+            
+            # 密码验证成功，解密并显示密钥
+            self.show_secret_key()
     
     def show_secret_key(self):
         """显示明文密钥"""
@@ -1087,7 +1168,7 @@ class MainWindow(QMainWindow):
         info_layout.addWidget(version_label)
         
         # 开发者信息
-        dev_label = QLabel("开发者: ANTmmmmm <ANTmmmmm@outlook.com>")
+        dev_label = QLabel("开发者: ant-cave (ANTmmmmm) <ANTmmmmm@outlook.com><ANTmmmmm@126.com>")
         dev_label.setFont(QFont("Arial", 10))
         dev_label.setStyleSheet("color: #7f8c8d; margin-top: 10px;")
         dev_label.setAlignment(Qt.AlignmentFlag.AlignCenter)

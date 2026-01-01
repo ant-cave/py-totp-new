@@ -2,7 +2,7 @@
 # Using UPX compression optimization, single file mode, no console window
 
 # Configuration parameters
-$UPX_PATH = "C:\Program Files\upx-5.0.2-win64\upx.exe"
+$UPX_PATH = "F:\Program Files\upx-5.0.2-win64\upx.exe"
 $ICON_PATH = "icon.ico"
 $MAIN_FILE = "main.py"
 $OUTPUT_NAME = "totp_app"
@@ -99,12 +99,24 @@ if (Test-Path "dist") {
     Write-Host "Cleaned dist directory" -ForegroundColor Yellow
 }
 
-# Activate virtual environment if exists
+# Activate virtual environment if exists, else use global python
+$pythonExe = $null
+
 $vEnvPath = Join-Path $PROJECT_PATH ".venv"
-$pythonExe = "python"
-if (Test-Path $vEnvPath) {
-    $pythonExe = Join-Path $vEnvPath "Scripts\python.exe"
+$venvPython = Join-Path $vEnvPath "Scripts\python.exe"
+
+if (Test-Path $venvPython) {
+    $pythonExe = $venvPython
     Write-Host "Using virtual environment: $vEnvPath" -ForegroundColor Cyan
+} else {
+    # Fall back to global `python`
+    try {
+        $pythonExe = (Get-Command python -ErrorAction Stop).Path
+        Write-Host "Using global Python: $pythonExe" -ForegroundColor Cyan
+    } catch {
+        Write-Host "Error: Python not found in PATH and no virtual environment at '$vEnvPath'" -ForegroundColor Red
+        exit 1
+    }
 }
 
 # Execute PyInstaller

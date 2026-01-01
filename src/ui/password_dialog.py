@@ -53,7 +53,8 @@ class PasswordDialog(QDialog):
         self.setModal(True)
         self.resize(400, 300)
         icon_data = base64.b64decode(ICON_BASE64)
-        self.setWindowFlag(Qt.Window) 
+        # 设置窗口始终置顶，确保密码弹窗不会被其他窗口遮挡
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         pixmap = QPixmap()
         pixmap.loadFromData(icon_data)
         icon = QIcon(pixmap)
