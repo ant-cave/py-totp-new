@@ -256,19 +256,20 @@ class TOTPItemWidget(QWidget):
         self.delete_button = QPushButton("🗑️")
         self.delete_button.setFixedSize(30, 30)
         self.delete_button.setStyleSheet("""
-            QPushButton {
-                background: #e74c3c;
-                border: none;
-                border-radius: 15px;
-                color: white;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background: #c0392b;
-            }
-            QPushButton:pressed {
-                background: #a93226;
-            }
+QPushButton {
+    background: white;
+    border: 2px solid #e74c3c;
+    border-radius: 15px;
+    color: #e74c3c;
+    font-size: 12px;
+}
+QPushButton:hover {
+    background: #ffcdd2;  /* 浅粉红（Material风格） */
+}
+QPushButton:pressed {
+    background: #e74c3c;  /* 与边框同色 */
+    color: white;
+}
         """)
         self.delete_button.setToolTip("删除此条目")
         self.delete_button.clicked.connect(self.on_delete_clicked)
