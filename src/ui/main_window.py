@@ -83,9 +83,10 @@ class TOTPItemWidget(QWidget):
     delete_requested = Signal(str)  # 删除请求信号
     code_copied = Signal(str)  # 新增：代码复制信号
     
-    def __init__(self, entry: TOTPEntry, parent=None):
+    def __init__(self, entry: TOTPEntry, parent=None, main_window=None):
         super().__init__(parent)
         self.entry = entry
+        self.main_window = main_window  # 保存主窗口引用
         self._is_hovered = False
         self._is_selected = False  # 新增：选中状态
         self.setup_ui()
@@ -276,10 +277,35 @@ QPushButton:pressed {
         # 让按钮不干扰悬停检测
         self.delete_button.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
 
+        # info按钮（查看密钥）
+        self.info_button = QPushButton("ℹ️")
+        self.info_button.setFixedSize(30, 30)
+        self.info_button.setStyleSheet("""
+QPushButton {
+    background: white;
+    border: 2px solid #3498db;
+    border-radius: 15px;
+    color: #3498db;
+    font-size: 12px;
+}
+QPushButton:hover {
+    background: #d6eaf8;  /* 浅蓝色 */
+}
+QPushButton:pressed {
+    background: #3498db;  /* 与边框同色 */
+    color: white;
+}
+        """)
+        self.info_button.setToolTip("查看明文密钥")
+        self.info_button.clicked.connect(self.on_info_clicked)
+        # 让按钮不干扰悬停检测
+        self.info_button.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
+
         # 组装 frame 内部
         frame_layout.addWidget(self.icon_label)
         frame_layout.addLayout(info_layout)
         frame_layout.addStretch()
+        frame_layout.addWidget(self.info_button)
         frame_layout.addWidget(self.delete_button)
 
         # 把 frame 加入主布局
@@ -315,6 +341,125 @@ QPushButton:pressed {
             """))
         
         super().mousePressEvent(ev) if hasattr(super(), 'mousePressEvent') else None
+    
+    def on_info_clicked(self):
+        """info按钮点击事件 - 查看明文密钥"""
+        if not self.main_window:
+            QMessageBox.warning(self, "错误", "无法访问主窗口")
+            return
+        
+        # 检查是否已解锁
+        if not self.main_window.current_password:
+            QMessageBox.warning(self, "错误", "应用未解锁")
+            return
+        
+        # 创建密码输入对话框
+        from PySide6.QtWidgets import QInputDialog
+        
+        password, ok = QInputDialog.getText(
+            self,
+            "验证密码",
+            "请输入主密码以查看明文密钥:",
+            QLineEdit.EchoMode.Password,
+            ""
+        )
+        
+        if not ok or not password:
+            return  # 用户取消
+        
+        # 验证密码（使用主窗口的当前密码进行比对）
+        if password != self.main_window.current_password:
+            QMessageBox.warning(self, "密码错误", "密码不正确")
+            return
+        
+        # 密码验证成功，解密并显示密钥
+        self.show_secret_key()
+    
+    def show_secret_key(self):
+        """显示明文密钥"""
+        if not self.entry.encrypted_key or not self.entry.salt:
+            QMessageBox.warning(self, "错误", "该条目没有加密的密钥")
+            return
+        
+        if not self.main_window or not self.main_window.current_password:
+            QMessageBox.warning(self, "错误", "无法获取解密密码")
+            return
+        
+        # 使用加密管理器解密密钥
+        try:
+            # 获取主窗口的totp_manager
+            totp_manager = self.main_window.totp_manager
+            encryption = totp_manager.encryption
+            
+            # 解密密钥
+            secret_key = encryption.decrypt_totp_key(
+                self.entry.encrypted_key, 
+                self.entry.salt, 
+                self.main_window.current_password
+            )
+            
+            if not secret_key:
+                QMessageBox.warning(self, "解密失败", "无法解密密钥")
+                return
+            
+            # 显示密钥对话框
+            self.show_key_dialog(secret_key)
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"解密过程出错: {str(e)}")
+    
+    def show_key_dialog(self, secret_key: str):
+        """显示密钥对话框"""
+        # 创建一个简单的对话框显示密钥
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"明文密钥 - {self.entry.name}")
+        dialog.setMinimumWidth(400)
+        
+        layout = QVBoxLayout(dialog)
+        
+        # 标题
+        title_label = QLabel(f"<b>{self.entry.name}</b> 的明文密钥")
+        if self.entry.issuer:
+            title_label.setText(f"<b>{self.entry.name}</b> ({self.entry.issuer}) 的明文密钥")
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title_label)
+        
+        # 密钥显示区域
+        key_frame = QFrame()
+        key_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        key_frame.setStyleSheet("""
+            QFrame {
+                background: #f8f9fa;
+                border: 2px solid #3498db;
+                border-radius: 8px;
+                padding: 15px;
+            }
+        """)
+        
+        key_layout = QVBoxLayout(key_frame)
+        
+        key_label = QLabel(secret_key)
+        key_label.setFont(QFont("Courier New", 12, QFont.Weight.Bold))
+        key_label.setStyleSheet("color: #2c3e50; letter-spacing: 1px;")
+        key_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        key_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        key_label.setWordWrap(True)
+        
+        key_layout.addWidget(key_label)
+        layout.addWidget(key_frame)
+        
+        # 说明文本
+        info_label = QLabel("注意：请妥善保管此密钥，不要与他人分享")
+        info_label.setStyleSheet("color: #7f8c8d; font-size: 11px;")
+        info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(info_label)
+        
+        # 按钮
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+        button_box.accepted.connect(dialog.accept)
+        layout.addWidget(button_box)
+        
+        dialog.exec()
     
     def on_delete_clicked(self):
         """删除按钮点击事件"""
@@ -608,7 +753,7 @@ class MainWindow(QMainWindow):
         entries = self.totp_manager.get_all_entries()
         
         for entry in entries:
-            item_widget = TOTPItemWidget(entry)
+            item_widget = TOTPItemWidget(entry, main_window=self)  # 传递主窗口引用
             # 连接删除信号
             item_widget.delete_requested.connect(self.on_delete_entry_requested)
             # 连接代码复制信号
